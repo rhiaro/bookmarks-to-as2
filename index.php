@@ -10,6 +10,7 @@ $options = array(
 $file = "bookmarks-2017-01-10.json";
 
 function parse_bookmarks($container){
+  // Grab the relevant things from the firefox JSON
   $items = array();
   foreach($container as $item){
     if($item["type"] == "text/x-moz-place" && substr($item["uri"], 0, 4) == "http"){
@@ -44,7 +45,7 @@ function make_as2($options, $file){
     $d = new DateTime($bm["published"]);
     $y = $d->format("Y");
     $m = $d->format("m");
-    $uri = $options["base"]."/".$y."/".$m."/".uniqid();
+    $uri = $options["base"].$y."/".$m."/".uniqid();
 
     if(isset($bm["name"])){
       $obj = $bm["name"];
@@ -75,7 +76,36 @@ function make_as2($options, $file){
 }
 
 $bms = make_as2($options, $file);
-foreach($bms as $bm){
-  echo "<pre>$bm</pre>";
+
+if(isset($_POST['submit'])){
+  $keep = array();
+  foreach($bms as $i => $json){
+    $bm = json_decode($json, true);
+    if(in_array($bm['object']['id'], $_POST['bm'])){
+      $keep[] = $bm;
+    }
+  }
+  header("Content-Type: application/json");
+  echo json_encode($keep);
+  die();
 }
 ?>
+<!doctype html>
+<html>
+  <head><title>Bookmarks as AS2</title></head>
+  <body>
+    <h1>Bookmarks</h1>
+    <p>Choose bookmarks to keep</p>
+    <form method="post">
+      <?foreach($bms as $json):?>
+        <? $bm = json_decode($json, true); ?>
+        <p><strong><input type="checkbox" name="bm[]" value="<?=$bm['object']['id']?>" id="<?=$bm['object']['id']?>" /> <label for="<?=$bm['object']['id']?>"><?=$bm['id']?></label></strong></p>
+        <p><a href="<?=$bm['object']['id']?>"><?=$bm['object']['name']?></a> (<?=$bm['published']?>)</p>
+        <?if(isset($bm['object']['summary'])):?>
+          <p><?=$bm['object']['summary']?></p>
+        <?endif?>
+      <?endforeach?>
+      <p><input type="submit" name="submit" value="Make it so" /></p>
+    </form>
+  </body>
+</html>
